@@ -1,0 +1,8 @@
+{
+"port":8080,
+"APIKey":"ABC",
+"ISI":10,
+"DatabaseUrl":"localhost:27017",
+"DatabaseName":"quotes",
+"DatabaseCollection":"quote"
+}
