@@ -7,6 +7,7 @@ import (
 	"log"
 	"math/rand"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 
@@ -102,7 +103,11 @@ func learnQuote(w http.ResponseWriter, req *http.Request) {
 }
 
 func getConfig() config {
-	file, err := ioutil.ReadFile("./config.json")
+	configfile := os.Getenv("GQACONFIGFILE")
+	if configfile == "" {
+		configfile = "./config.json"
+	}
+	file, err := ioutil.ReadFile(configfile)
 	if err != nil {
 		log.Fatal(err)
 	}
