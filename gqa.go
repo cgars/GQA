@@ -36,18 +36,34 @@ type config struct {
 var serverconfig config
 var nextInsert = time.Now()
 
-func getQuote(w http.ResponseWriter, req *http.Request) {
+func getQuoteFromMongo() (quote, error) {
 	randQuote := quote{}
 	session, err := mgo.Dial(serverconfig.Databaseurl)
 	if err != nil {
-		log.Printf("Could nor connect to the db:\n%s", err)
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+		return randQuote, err
 	}
-
 	dbConn := session.DB(serverconfig.DatabaseName).C(serverconfig.DatabaseCollection)
 	quoteCount, err := dbConn.Count()
 	err = dbConn.Find(nil).Limit(-1).Skip(rand.Intn(quoteCount)).One(&randQuote)
+	if err != nil {
+		return randQuote, err
+	}
+	session.Close()
+	return randQuote, nil
+}
+
+func storeQuoteWithMongo(q quote) error {
+	session, err := mgo.Dial(serverconfig.Databaseurl)
+	if err != nil {
+		return err
+	}
+	dbConn := session.DB(serverconfig.DatabaseName).C(serverconfig.DatabaseCollection)
+	err = dbConn.Insert(q)
+	session.Close()
+	return err
+}
+func getQuote(w http.ResponseWriter, req *http.Request) {
+	randQuote, err := getQuoteFromMongo()
 	if err != nil {
 		log.Printf("Could not get a quote:%s", err)
 		w.WriteHeader(http.StatusInternalServerError)
@@ -55,7 +71,7 @@ func getQuote(w http.ResponseWriter, req *http.Request) {
 	}
 	encoder := json.NewEncoder(w)
 	encoder.Encode(randQuote)
-	session.Close()
+
 }
 
 func learnQuote(w http.ResponseWriter, req *http.Request) {
@@ -89,9 +105,7 @@ func learnQuote(w http.ResponseWriter, req *http.Request) {
 	newquote.Author = strings.Replace(newquote.Author, "/", "", -1)
 	newquote.Txt = strings.Replace(newquote.Txt, "/", "", -1)
 
-	session, err := mgo.Dial(serverconfig.Databaseurl)
-	dbConn := session.DB(serverconfig.DatabaseName).C(serverconfig.DatabaseCollection)
-	err = dbConn.Insert(newquote)
+	err = storeQuoteWithMongo(newquote)
 	if err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
 		log.Print(err)
@@ -99,7 +113,6 @@ func learnQuote(w http.ResponseWriter, req *http.Request) {
 	}
 	w.WriteHeader(http.StatusCreated)
 	nextInsert = time.Now().Add(time.Duration(serverconfig.ISI) * time.Second)
-	session.Close()
 }
 
 func getConfig() config {
