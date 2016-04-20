@@ -62,6 +62,7 @@ func storeQuoteWithMongo(q quote) error {
 	session.Close()
 	return err
 }
+
 func getQuote(w http.ResponseWriter, req *http.Request) {
 	randQuote, err := getQuoteFromMongo()
 	if err != nil {
@@ -102,8 +103,8 @@ func learnQuote(w http.ResponseWriter, req *http.Request) {
 		log.Printf("Smbdy tried to add a quote befor ISI was over. The quote was:\n%s", newquote)
 		return
 	}
-	newquote.Author = strings.Replace(newquote.Author, "/", "", -1)
-	newquote.Txt = strings.Replace(newquote.Txt, "/", "", -1)
+
+	cleanQuote(&newquote)
 
 	err = storeQuoteWithMongo(newquote)
 	if err != nil {
@@ -113,6 +114,11 @@ func learnQuote(w http.ResponseWriter, req *http.Request) {
 	}
 	w.WriteHeader(http.StatusCreated)
 	nextInsert = time.Now().Add(time.Duration(serverconfig.ISI) * time.Second)
+}
+
+func cleanQuote(q *quote) {
+	q.Author = strings.Replace(q.Author, "/", "", -1)
+	q.Txt = strings.Replace(q.Txt, "/", "", -1)
 }
 
 func getConfig() config {
