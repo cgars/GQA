@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -44,6 +45,12 @@ func getQuoteFromMongo() (quote, error) {
 	}
 	dbConn := session.DB(serverconfig.DatabaseName).C(serverconfig.DatabaseCollection)
 	quoteCount, err := dbConn.Count()
+	if err != nil {
+		return randQuote, err
+	}
+	if quoteCount == 0 {
+		return randQuote, errors.New("Database seems to be empty")
+	}
 	err = dbConn.Find(nil).Limit(-1).Skip(rand.Intn(quoteCount)).One(&randQuote)
 	if err != nil {
 		return randQuote, err
